@@ -3,714 +3,380 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Void: Cyberpunk Survival</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Neon Core Clicker</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        :root {
+            --bg-color: #0f0f1a;
+            --text-color: #e0e0e0;
+            --accent: #00ffcc;
+            --secondary: #ff0055;
+            --panel-bg: #1a1a2e;
+        }
 
         body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
-            overflow: hidden;
-            background-color: #050505;
-            font-family: 'Orbitron', sans-serif;
-            user-select: none;
-        }
-
-        canvas {
-            display: block;
-        }
-
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 10;
-        }
-
-        .interactive {
-            pointer-events: auto;
-        }
-
-        .neon-text {
-            text-shadow: 0 0 10px rgba(6, 182, 212, 0.7), 0 0 20px rgba(6, 182, 212, 0.5);
-        }
-
-        .neon-text-danger {
-            text-shadow: 0 0 10px rgba(239, 68, 68, 0.7), 0 0 20px rgba(239, 68, 68, 0.5);
-        }
-
-        /* CRT Scanline Effect */
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.2) 50%,
-                rgba(0,0,0,0.2)
-            );
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 20;
-            opacity: 0.6;
-        }
-
-        .vignette {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.8) 100%);
-            pointer-events: none;
-            z-index: 21;
-        }
-
-        .hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 1.2rem;
-            pointer-events: none;
-            text-align: left;
-        }
-
-        .health-bar-container {
-            width: 200px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            margin-top: 5px;
-            transform: skewX(-20deg);
-        }
-
-        .health-fill {
-            height: 100%;
-            background: #ef4444;
-            box-shadow: 0 0 10px #ef4444;
-            width: 100%;
-            transition: width 0.2s ease-out;
-        }
-
-        .btn-cyber {
-            background: transparent;
-            border: 2px solid #06b6d4;
-            color: #06b6d4;
-            padding: 15px 40px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
+            min-height: 100vh;
+            user-select: none;
             overflow: hidden;
         }
 
-        .btn-cyber:hover {
-            background: #06b6d4;
-            color: #000;
-            box-shadow: 0 0 20px #06b6d4;
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            width: 90%;
+            max-width: 1000px;
+            height: 80vh;
         }
 
-        .hidden {
-            display: none !important;
+        /* Left Panel: The Core */
+        .game-area {
+            background: var(--panel-bg);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        h1 { margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); }
+        
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 0 10px var(--accent);
+        }
+
+        .stats {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-bottom: 40px;
+        }
+
+        #core-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            border: 4px solid var(--accent);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
+            z-index: 10;
+            outline: none;
+        }
+
+        #core-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 30px var(--accent);
+        }
+
+        #core-btn:hover {
+            box-shadow: 0 0 50px var(--accent);
+        }
+
+        /* Right Panel: Upgrades */
+        .upgrade-area {
+            background: var(--panel-bg);
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .upgrade-header {
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: var(--secondary);
+        }
+
+        .upgrade-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .upgrade-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(-5px);
+        }
+
+        .upgrade-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .item-info h4 { margin: 0; font-size: 1rem; }
+        .item-info p { margin: 5px 0 0; font-size: 0.8rem; color: #aaa; }
+        .item-cost { font-weight: bold; color: var(--accent); }
+
+        /* Floating Text Animation */
+        .floating-text {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; height: 95vh; }
+            #core-btn { width: 150px; height: 150px; }
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+        
+        button.reset-btn {
+            background: transparent;
+            border: 1px solid #555;
+            color: #555;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.7rem;
         }
     </style>
 </head>
 <body>
 
-    <!-- Visual Effects Overlays -->
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
-
-    <!-- Game Canvas -->
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- HUD (Heads Up Display) -->
-    <div id="hud" class="hud hidden">
-        <div class="text-cyan-400">SCORE: <span id="scoreDisplay">0</span></div>
-        <div class="text-xs text-gray-400 mt-1">WAVE: <span id="waveDisplay">1</span></div>
-        <div class="health-bar-container">
-            <div id="healthFill" class="health-fill"></div>
+<div class="container">
+    <!-- Game Area -->
+    <div class="game-area">
+        <h1>Neon Core</h1>
+        <div class="score-display"><span id="energy">0</span> Energy</div>
+        <div class="stats">
+            Per Click: <span id="per-click">1</span> | Per Second: <span id="per-second">0</span>
+        </div>
+        
+        <button id="core-btn"></button>
+        
+        <div class="controls">
+            <button class="reset-btn" onclick="resetGame()">Reset Save</button>
         </div>
     </div>
 
-    <!-- Start Screen -->
-    <div id="startScreen" class="ui-layer interactive bg-black/80 backdrop-blur-sm">
-        <h1 class="text-6xl md:text-8xl font-black text-white mb-2 neon-text tracking-tighter italic">NEON VOID</h1>
-        <p class="text-cyan-200 mb-8 text-lg tracking-widest opacity-80">SURVIVE THE DIGITAL ONSLAUGHT</p>
-        
-        <div class="flex gap-8 mb-12 text-sm text-gray-300">
-            <div class="flex flex-col items-center">
-                <div class="border border-gray-600 px-3 py-1 rounded mb-2">WASD / ARROWS</div>
-                <span>MOVE</span>
-            </div>
-            <div class="flex flex-col items-center">
-                <div class="border border-gray-600 px-3 py-1 rounded mb-2">MOUSE</div>
-                <span>AIM & SHOOT</span>
-            </div>
+    <!-- Upgrade Shop -->
+    <div class="upgrade-area">
+        <div class="upgrade-header">
+            <h3>System Upgrades</h3>
         </div>
-
-        <button id="startBtn" class="btn-cyber">INITIALIZE SYSTEM</button>
+        <div id="upgrades-list">
+            <!-- Upgrades injected via JS -->
+        </div>
     </div>
+</div>
 
-    <!-- Game Over Screen -->
-    <div id="gameOverScreen" class="ui-layer interactive bg-red-900/20 backdrop-blur-md hidden">
-        <h2 class="text-6xl font-black text-white mb-2 neon-text-danger">SYSTEM FAILURE</h2>
-        <p class="text-red-200 mb-6 text-xl">FINAL SCORE: <span id="finalScore" class="font-bold text-white">0</span></p>
-        <button id="restartBtn" class="btn-cyber border-red-500 text-red-500 hover:bg-red-500 hover:shadow-red-500">REBOOT</button>
-    </div>
+<script>
+    // --- Game Configuration & State ---
+    const GAME_CONFIG = {
+        fps: 30,
+        autoSaveInterval: 5000 // 5 seconds
+    };
 
-    <script>
-        /**
-         * NEON VOID - GAME ENGINE
-         * A high-performance HTML5 Canvas shooter.
-         */
-
-        // --- Configuration & Constants ---
-        const CONFIG = {
-            playerSpeed: 5,
-            playerDrag: 0.92,
-            bulletSpeed: 15,
-            fireRate: 8, // Frames between shots
-            enemyBaseSpeed: 2,
-            particleLife: 30,
-            colors: {
-                player: '#06b6d4', // Cyan
-                bullet: '#facc15', // Yellow
-                enemyBasic: '#a855f7', // Purple
-                enemyFast: '#ec4899', // Pink
-                enemyTank: '#ef4444', // Red
-                bg: '#050505'
-            }
-        };
-
-        // --- State Management ---
-        const state = {
-            isPlaying: false,
-            score: 0,
-            wave: 1,
-            frames: 0,
-            mouseX: 0,
-            mouseY: 0,
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
-
-        // --- DOM Elements ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const hud = document.getElementById('hud');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const waveDisplay = document.getElementById('waveDisplay');
-        const healthFill = document.getElementById('healthFill');
-        const finalScoreDisplay = document.getElementById('finalScore');
-
-        // --- Input Handling ---
-        const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.code] = true);
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-        window.addEventListener('mousemove', (e) => {
-            state.mouseX = e.clientX;
-            state.mouseY = e.clientY;
-        });
-        window.addEventListener('resize', resizeCanvas);
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            state.width = canvas.width;
-            state.height = canvas.height;
+    let gameState = {
+        energy: 0,
+        totalClicks: 0,
+        startTime: Date.now(),
+        upgrades: {
+            clicker: { count: 0, baseCost: 15, costMult: 1.5, power: 1, name: "Overclock Mouse", desc: "+1 Energy per click" },
+            battery: { count: 0, baseCost: 100, costMult: 1.4, power: 2, name: "Li-Ion Battery", desc: "+2 Energy / sec" },
+            server: { count: 0, baseCost: 500, costMult: 1.3, power: 10, name: "Home Server", desc: "+10 Energy / sec" },
+            farm:   { count: 0, baseCost: 2000, costMult: 1.3, power: 50, name: "Crypto Farm", desc: "+50 Energy / sec" },
+            ai:     { count: 0, baseCost: 10000, costMult: 1.4, power: 200, name: "Sentient AI", desc: "+200 Energy / sec" }
         }
-        resizeCanvas();
+    };
 
-        // --- Classes ---
+    // --- DOM Elements ---
+    const elEnergy = document.getElementById('energy');
+    const elPerClick = document.getElementById('per-click');
+    const elPerSecond = document.getElementById('per-second');
+    const elCoreBtn = document.getElementById('core-btn');
+    const elUpgradesList = document.getElementById('upgrades-list');
 
-        class Vector {
-            constructor(x, y) { this.x = x; this.y = y; }
-            add(v) { return new Vector(this.x + v.x, this.y + v.y); }
-            sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
-            mult(n) { return new Vector(this.x * n, this.y * n); }
-            mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
-            normalize() {
-                const m = this.mag();
-                return m === 0 ? new Vector(0, 0) : new Vector(this.x / m, this.y / m);
+    // --- Core Logic ---
+
+    function getClickPower() {
+        return 1 + (gameState.upgrades.clicker.count * gameState.upgrades.clicker.power);
+    }
+
+    function getAutoProduction() {
+        let prod = 0;
+        // Skip 'clicker' as it's manual
+        for (const key in gameState.upgrades) {
+            if (key !== 'clicker') {
+                prod += gameState.upgrades[key].count * gameState.upgrades[key].power;
             }
         }
+        return prod;
+    }
 
-        class Particle {
-            constructor(x, y, color, speed, size) {
-                this.pos = new Vector(x, y);
-                const angle = Math.random() * Math.PI * 2;
-                const velocityMag = Math.random() * speed;
-                this.vel = new Vector(Math.cos(angle) * velocityMag, Math.sin(angle) * velocityMag);
-                this.color = color;
-                this.size = Math.random() * size + 1;
-                this.life = CONFIG.particleLife;
-                this.decay = Math.random() * 0.05 + 0.02;
-            }
+    function getUpgradeCost(key) {
+        const u = gameState.upgrades[key];
+        return Math.floor(u.baseCost * Math.pow(u.costMult, u.count));
+    }
 
-            update() {
-                this.pos = this.pos.add(this.vel);
-                this.life -= 1;
-                this.size *= 0.95;
-            }
+    function addEnergy(amount) {
+        gameState.energy += amount;
+        updateUI();
+    }
 
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.life / CONFIG.particleLife;
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.pos.x, this.pos.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
+    // --- Interaction ---
+
+    elCoreBtn.addEventListener('mousedown', (e) => {
+        const power = getClickPower();
+        addEnergy(power);
+        gameState.totalClicks++;
+        createFloatingText(e.clientX, e.clientY, `+${power}`);
+    });
+
+    // Handle Touch for mobile
+    elCoreBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // prevent zoom
+        const touch = e.touches[0];
+        const power = getClickPower();
+        addEnergy(power);
+        gameState.totalClicks++;
+        createFloatingText(touch.clientX, touch.clientY, `+${power}`);
+    });
+
+    function buyUpgrade(key) {
+        const cost = getUpgradeCost(key);
+        if (gameState.energy >= cost) {
+            gameState.energy -= cost;
+            gameState.upgrades[key].count++;
+            renderUpgrades();
+            updateUI();
+            saveGame();
         }
+    }
 
-        class Bullet {
-            constructor(x, y, targetX, targetY) {
-                this.pos = new Vector(x, y);
-                const dir = new Vector(targetX - x, targetY - y).normalize();
-                this.vel = dir.mult(CONFIG.bulletSpeed);
-                this.radius = 3;
-                this.markedForDeletion = false;
-                
-                // Trail effect
-                this.trail = [];
-            }
+    // --- Visuals ---
 
-            update() {
-                // Add current pos to trail
-                this.trail.push({x: this.pos.x, y: this.pos.y});
-                if (this.trail.length > 5) this.trail.shift();
+    function createFloatingText(x, y, text) {
+        const el = document.createElement('div');
+        el.className = 'floating-text';
+        el.innerText = text;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
 
-                this.pos = this.pos.add(this.vel);
-
-                // Boundary check
-                if (this.pos.x < 0 || this.pos.x > state.width || 
-                    this.pos.y < 0 || this.pos.y > state.height) {
-                    this.markedForDeletion = true;
-                }
-            }
-
-            draw(ctx) {
-                // Draw Trail
-                ctx.beginPath();
-                ctx.strokeStyle = CONFIG.colors.bullet;
-                ctx.lineWidth = 2;
-                for (let i = 0; i < this.trail.length; i++) {
-                    const point = this.trail[i];
-                    if (i === 0) ctx.moveTo(point.x, point.y);
-                    else ctx.lineTo(point.x, point.y);
-                }
-                ctx.stroke();
-
-                // Draw Bullet
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = CONFIG.colors.bullet;
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-        }
-
-        class Enemy {
-            constructor(type) {
-                // Spawn logic: random edge
-                const edge = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
-                if (edge === 0) { this.pos = new Vector(Math.random() * state.width, -30); }
-                else if (edge === 1) { this.pos = new Vector(state.width + 30, Math.random() * state.height); }
-                else if (edge === 2) { this.pos = new Vector(Math.random() * state.width, state.height + 30); }
-                else { this.pos = new Vector(-30, Math.random() * state.height); }
-
-                this.type = type;
-                this.markedForDeletion = false;
-                this.angle = 0;
-
-                // Stats based on type
-                if (type === 'basic') {
-                    this.hp = 2;
-                    this.speed = CONFIG.enemyBaseSpeed + (Math.random() * 0.5);
-                    this.radius = 15;
-                    this.color = CONFIG.colors.enemyBasic;
-                    this.scoreValue = 100;
-                } else if (type === 'fast') {
-                    this.hp = 1;
-                    this.speed = CONFIG.enemyBaseSpeed * 2.5;
-                    this.radius = 10;
-                    this.color = CONFIG.colors.enemyFast;
-                    this.scoreValue = 200;
-                } else if (type === 'tank') {
-                    this.hp = 8;
-                    this.speed = CONFIG.enemyBaseSpeed * 0.6;
-                    this.radius = 25;
-                    this.color = CONFIG.colors.enemyTank;
-                    this.scoreValue = 500;
-                }
-            }
-
-            update(playerPos) {
-                // Move towards player
-                const dir = playerPos.sub(this.pos).normalize();
-                this.pos = this.pos.add(dir.mult(this.speed));
-                
-                // Rotate towards player for visual effect
-                this.angle = Math.atan2(dir.y, dir.x);
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.pos.x, this.pos.y);
-                ctx.rotate(this.angle);
-                
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.color;
-                ctx.strokeStyle = this.color;
-                ctx.lineWidth = 2;
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-
-                ctx.beginPath();
-                if (this.type === 'basic') {
-                    // Square rotated
-                    ctx.rect(-this.radius, -this.radius, this.radius*2, this.radius*2);
-                } else if (this.type === 'fast') {
-                    // Triangle
-                    ctx.moveTo(this.radius, 0);
-                    ctx.lineTo(-this.radius, -this.radius/1.5);
-                    ctx.lineTo(-this.radius, this.radius/1.5);
-                    ctx.closePath();
-                } else if (this.type === 'tank') {
-                    // Hexagon
-                    for (let i = 0; i < 6; i++) {
-                        const angle = i * Math.PI / 3;
-                        const x = Math.cos(angle) * this.radius;
-                        const y = Math.sin(angle) * this.radius;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                    ctx.closePath();
-                }
-                
-                ctx.fill();
-                ctx.stroke();
-
-                // Inner core
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.radius * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-            }
-        }
-
-        class Player {
-            constructor() {
-                this.pos = new Vector(state.width / 2, state.height / 2);
-                this.vel = new Vector(0, 0);
-                this.radius = 15;
-                this.angle = 0;
-                this.hp = 100;
-                this.maxHp = 100;
-                this.cooldown = 0;
-            }
-
-            update() {
-                // Movement
-                let input = new Vector(0, 0);
-                if (keys['KeyW'] || keys['ArrowUp']) input.y -= 1;
-                if (keys['KeyS'] || keys['ArrowDown']) input.y += 1;
-                if (keys['KeyA'] || keys['ArrowLeft']) input.x -= 1;
-                if (keys['KeyD'] || keys['ArrowRight']) input.x += 1;
-
-                if (input.mag() > 0) {
-                    input = input.normalize().mult(CONFIG.playerSpeed);
-                    this.vel = this.vel.add(input.mult(0.2)); // Acceleration
-                }
-
-                // Friction
-                this.vel = this.vel.mult(CONFIG.playerDrag);
-                this.pos = this.pos.add(this.vel);
-
-                // Boundaries
-                this.pos.x = Math.max(this.radius, Math.min(state.width - this.radius, this.pos.x));
-                this.pos.y = Math.max(this.radius, Math.min(state.height - this.radius, this.pos.y));
-
-                // Rotation
-                this.angle = Math.atan2(state.mouseY - this.pos.y, state.mouseX - this.pos.x);
-
-                // Shooting
-                if (this.cooldown > 0) this.cooldown--;
-                if ((keys['Space'] || (mouseDown)) && this.cooldown <= 0) {
-                    this.shoot();
-                }
-            }
-
-            shoot() {
-                bullets.push(new Bullet(
-                    this.pos.x + Math.cos(this.angle) * 20,
-                    this.pos.y + Math.sin(this.angle) * 20,
-                    state.mouseX,
-                    state.mouseY
-                ));
-                this.cooldown = CONFIG.fireRate;
-                
-                // Recoil
-                const recoil = new Vector(Math.cos(this.angle), Math.sin(this.angle)).mult(-2);
-                this.vel = this.vel.add(recoil);
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.pos.x, this.pos.y);
-                ctx.rotate(this.angle);
-
-                // Glow
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = CONFIG.colors.player;
-
-                // Ship Body
-                ctx.fillStyle = '#000';
-                ctx.strokeStyle = CONFIG.colors.player;
-                ctx.lineWidth = 2;
-                
-                ctx.beginPath();
-                ctx.moveTo(20, 0); // Nose
-                ctx.lineTo(-15, 15); // Back Left
-                ctx.lineTo(-5, 0); // Engine indent
-                ctx.lineTo(-15, -15); // Back Right
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Engine flame
-                if (this.vel.mag() > 0.5) {
-                    ctx.fillStyle = '#06b6d4';
-                    ctx.beginPath();
-                    ctx.moveTo(-8, 0);
-                    ctx.lineTo(-25 - Math.random()*10, 0);
-                    ctx.lineTo(-8, 5);
-                    ctx.lineTo(-8, -5);
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-        }
-
-        // --- Game Variables ---
-        let player;
-        let bullets = [];
-        let enemies = [];
-        let particles = [];
-        let mouseDown = false;
-        let animationId;
-
-        // --- Core Functions ---
-
-        function initGame() {
-            player = new Player();
-            bullets = [];
-            enemies = [];
-            particles = [];
-            state.score = 0;
-            state.wave = 1;
-            state.frames = 0;
-            state.isPlaying = true;
-            
-            updateHUD();
-            
-            startScreen.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
-            hud.classList.remove('hidden');
-            
-            loop();
-        }
-
-        function spawnEnemy() {
-            // Difficulty scaling
-            const spawnRate = Math.max(20, 60 - (state.wave * 2)); 
-            
-            if (state.frames % spawnRate === 0) {
-                const rand = Math.random();
-                let type = 'basic';
-                
-                if (state.wave > 2 && rand > 0.8) type = 'fast';
-                if (state.wave > 4 && rand > 0.95) type = 'tank';
-                
-                enemies.push(new Enemy(type));
-            }
-        }
-
-        function createExplosion(x, y, color, count = 10) {
-            for (let i = 0; i < count; i++) {
-                particles.push(new Particle(x, y, color, 5, 3));
-            }
-        }
-
-        function checkCollisions() {
-            // Bullets vs Enemies
-            bullets.forEach(bullet => {
-                enemies.forEach(enemy => {
-                    if (!bullet.markedForDeletion && !enemy.markedForDeletion) {
-                        const dist = bullet.pos.sub(enemy.pos).mag();
-                        if (dist < enemy.radius + bullet.radius) {
-                            bullet.markedForDeletion = true;
-                            enemy.hp--;
-                            createExplosion(bullet.pos.x, bullet.pos.y, '#fff', 3);
-                            
-                            if (enemy.hp <= 0) {
-                                enemy.markedForDeletion = true;
-                                state.score += enemy.scoreValue;
-                                createExplosion(enemy.pos.x, enemy.pos.y, enemy.color, 15);
-                                
-                                // Wave progression
-                                if (state.score > state.wave * 1000) {
-                                    state.wave++;
-                                    // Heal player slightly on wave clear
-                                    player.hp = Math.min(player.maxHp, player.hp + 20);
-                                }
-                            }
-                        }
-                    }
-                });
-            });
-
-            // Enemies vs Player
-            enemies.forEach(enemy => {
-                if (!enemy.markedForDeletion) {
-                    const dist = enemy.pos.sub(player.pos).mag();
-                    if (dist < enemy.radius + player.radius) {
-                        enemy.markedForDeletion = true;
-                        player.hp -= 20;
-                        createExplosion(player.pos.x, player.pos.y, '#ff0000', 20);
-                        
-                        // Screen shake effect (simulated by offsetting canvas briefly? 
-                        // Simpler: just flash red)
-                        document.body.style.backgroundColor = '#300';
-                        setTimeout(() => document.body.style.backgroundColor = '#050505', 50);
-
-                        if (player.hp <= 0) {
-                            endGame();
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateHUD() {
-            scoreDisplay.innerText = state.score.toLocaleString();
-            waveDisplay.innerText = state.wave;
-            const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
-            healthFill.style.width = `${hpPercent}%`;
-        }
-
-        function endGame() {
-            state.isPlaying = false;
-            cancelAnimationFrame(animationId);
-            finalScoreDisplay.innerText = state.score.toLocaleString();
-            hud.classList.add('hidden');
-            gameOverScreen.classList.remove('hidden');
-        }
-
-        function drawGrid() {
-            ctx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
-            ctx.lineWidth = 1;
-            const gridSize = 50;
-            
-            // Moving grid effect
-            const offset = (state.frames * 0.5) % gridSize;
-
-            ctx.beginPath();
-            for (let x = 0; x <= state.width; x += gridSize) {
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, state.height);
-            }
-            for (let y = offset; y <= state.height; y += gridSize) {
-                ctx.moveTo(0, y);
-                ctx.lineTo(state.width, y);
-            }
-            ctx.stroke();
-        }
-
-        function loop() {
-            if (!state.isPlaying) return;
-
-            // Clear
-            ctx.fillStyle = 'rgba(5, 5, 5, 0.4)'; // Trails effect
-            ctx.fillRect(0, 0, state.width, state.height);
-
-            state.frames++;
-
-            // Background Grid
-            drawGrid();
-
-            // Update & Draw Player
-            player.update();
-            player.draw(ctx);
-
-            // Spawner
-            spawnEnemy();
-
-            // Update & Draw Bullets
-            bullets = bullets.filter(b => !b.markedForDeletion);
-            bullets.forEach(b => {
-                b.update();
-                b.draw(ctx);
-            });
-
-            // Update & Draw Enemies
-            enemies = enemies.filter(e => !e.markedForDeletion);
-            enemies.forEach(e => {
-                e.update(player.pos);
-                e.draw(ctx);
-            });
-
-            // Update & Draw Particles
-            particles = particles.filter(p => p.life > 0);
-            particles.forEach(p => {
-                p.update();
-                p.draw(ctx);
-            });
-
-            checkCollisions();
-            updateHUD();
-
-            animationId = requestAnimationFrame(loop);
-        }
-
-        // --- Event Listeners ---
-        document.getElementById('startBtn').addEventListener('click', initGame);
-        document.getElementById('restartBtn').addEventListener('click', initGame);
+    function updateUI() {
+        elEnergy.innerText = Math.floor(gameState.energy).toLocaleString();
+        elPerClick.innerText = getClickPower().toLocaleString();
+        elPerSecond.innerText = getAutoProduction().toLocaleString();
         
-        window.addEventListener('mousedown', () => mouseDown = true);
-        window.addEventListener('mouseup', () => mouseDown = false);
+        // Check affordability for visual feedback
+        checkAffordability();
+    }
 
-        // Initial Render
-        ctx.fillStyle = '#050505';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        drawGrid();
+    function renderUpgrades() {
+        elUpgradesList.innerHTML = '';
+        for (const [key, data] of Object.entries(gameState.upgrades)) {
+            const cost = getUpgradeCost(key);
+            const div = document.createElement('div');
+            div.className = 'upgrade-item';
+            div.id = `upg-${key}`;
+            div.onclick = () => buyUpgrade(key);
+            
+            div.innerHTML = `
+                <div class="item-info">
+                    <h4>${data.name} <small>(Lvl ${data.count})</small></h4>
+                    <p>${data.desc}</p>
+                </div>
+                <div class="item-cost">${cost.toLocaleString()}</div>
+            `;
+            elUpgradesList.appendChild(div);
+        }
+        checkAffordability();
+    }
 
-    </script>
+    function checkAffordability() {
+        for (const key in gameState.upgrades) {
+            const cost = getUpgradeCost(key);
+            const el = document.getElementById(`upg-${key}`);
+            if (el) {
+                if (gameState.energy >= cost) {
+                    el.classList.remove('disabled');
+                } else {
+                    el.classList.add('disabled');
+                }
+            }
+        }
+    }
+
+    // --- Game Loop & Persistence ---
+
+    // Passive Income Loop
+    setInterval(() => {
+        const production = getAutoProduction();
+        if (production > 0) {
+            // Add 1/10th of production every 100ms for smoothness
+            addEnergy(production / 10);
+        }
+    }, 100);
+
+    // Auto Save
+    setInterval(saveGame, GAME_CONFIG.autoSaveInterval);
+
+    function saveGame() {
+        localStorage.setItem('neonClickerSave', JSON.stringify(gameState));
+    }
+
+    function loadGame() {
+        const saved = localStorage.getItem('neonClickerSave');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Merge save with default config to handle updates/new items
+                gameState = { ...gameState, ...parsed, upgrades: { ...gameState.upgrades, ...parsed.upgrades } };
+            } catch (e) {
+                console.error("Save file corrupted");
+            }
+        }
+        renderUpgrades();
+        updateUI();
+    }
+
+    function resetGame() {
+        if(confirm("Are you sure you want to wipe your save?")) {
+            localStorage.removeItem('neonClickerSave');
+            location.reload();
+        }
+    }
+
+    // Initialize
+    loadGame();
+
+</script>
 </body>
 </html>
-
-
