@@ -22,17 +22,35 @@
         
         .upgrade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; margin-bottom: 5px; border-radius: 5px; }
         
-        /* Chat & Players */
         .chat-box { flex-grow: 1; overflow-y: scroll; background: black; border: 1px solid #333; padding: 10px; margin-bottom: 10px; font-size: 0.8em; min-height: 150px; }
         .msg { margin-bottom: 4px; word-wrap: break-word; }
         .sys-msg { color: yellow; font-style: italic; }
-        .click-msg { color: var(--green); }
         
         #status-indicator { text-align: center; padding: 5px; background: #333; margin-bottom: 10px; border-radius: 4px; font-size: 0.8em;}
         .mode-host { color: #4caf50; border: 1px solid #4caf50; }
         .mode-client { color: #2196f3; border: 1px solid #2196f3; }
 
-        /* Hidden States */
+        /* Persistent ID Display */
+        .id-banner { 
+            background: #000; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-bottom: 15px; 
+            text-align: center; 
+            border: 1px dashed var(--text);
+        }
+        .id-banner small { color: #888; display: block; margin-bottom: 4px; }
+        .id-banner strong { color: var(--text); word-break: break-all; font-size: 0.85em; letter-spacing: 0.5px; }
+        .copy-btn { 
+            background: #333; 
+            font-size: 0.7em; 
+            padding: 4px 8px; 
+            width: auto; 
+            margin-top: 5px; 
+            display: inline-block;
+        }
+        .copy-btn:hover { background: var(--green); }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -71,6 +89,14 @@
     <div class="col">
         <h2>NET LINK</h2>
         
+        <!-- PERSISTENT ID BANNER (Always Visible) -->
+        <div class="id-banner">
+            <small>YOUR NETWORK ID (Share this with friends):</small>
+            <strong id="my-peer-id-text">Connecting to network...</strong>
+            <br>
+            <button class="copy-btn" onclick="copyId()">Copy ID</button>
+        </div>
+
         <!-- LOGIN SCREEN -->
         <div id="connection-panel">
             <input type="text" id="username" placeholder="Enter Username" value="Engineer">
@@ -79,8 +105,6 @@
             <p style="text-align:center; font-size:0.8em;">- OR JOIN EXISTING -</p>
             <input type="text" id="host-id-input" placeholder="Paste Host ID Here">
             <button onclick="joinGame()">JOIN LOBBY</button>
-            
-            <div id="my-id-display" style="margin-top:20px; text-align:center; font-size:0.8em; color:#888; word-break:break-all;"></div>
         </div>
 
         <!-- IN GAME UI -->
@@ -112,6 +136,7 @@
     let peer = null;
     let connections = []; // Host stores clients here
     let hostConn = null;  // Client stores host connection here
+    let myPeerId = "Generating...";
     
     // The "Master" Game State
     let gameState = {
@@ -136,7 +161,6 @@
             gameState.energy = saved.energy || 0;
             gameState.darkMatter = saved.darkMatter || 0;
             gameState.totalEnergyRun = saved.totalEnergyRun || 0;
-            // Reconstruct buildings carefully
             gameState.buildings = BUILDING_DATA.map((b, index) => {
                 const savedB = saved.buildings ? saved.buildings[index] : null;
                 return { 
@@ -161,7 +185,6 @@
         return rawRate * getMultiplier();
     }
 
-    // Called when ANYONE clicks
     function performClick(amount) {
         const val = amount * getMultiplier();
         gameState.energy += val;
@@ -169,23 +192,18 @@
         updateUI();
     }
 
-    // Local user clicks button
     function sendClick() {
         const clickPower = 1; 
         
-        // Visual feedback immediately
         const btn = document.getElementById('btn-click');
         btn.style.transform = "scale(0.95)";
         setTimeout(() => btn.style.transform = "scale(1)", 50);
 
         if (isHost) {
             performClick(clickPower);
-            broadcastState(); // Send updated numbers to clients
+            broadcastState();
         } else if (hostConn) {
-            // Tell host I clicked
             hostConn.send({ type: 'click', amount: clickPower, user: myUsername });
-            // Optimistic UI update (optional, but feels better)
-            // performClick(clickPower); 
         }
     }
 
@@ -216,7 +234,6 @@
     function requestRebirth() {
         const gain = calculatePotentialDM();
         if (gain <= 0) return alert("Not enough energy!");
-        
         if(!confirm(`Rebirth? Gain ${gain} DM. Resets buildings/energy.`)) return;
 
         if (isHost) {
@@ -226,7 +243,6 @@
         }
     }
 
-    // Only Host runs this
     function doRebirthLogic(gain) {
         gameState.darkMatter += gain;
         gameState.energy = 0;
@@ -289,22 +305,23 @@
         peer = new Peer(null, { debug: 2 });
 
         peer.on('open', (id) => {
-            document.getElementById('my-id-display').innerText = "Your ID: " + id;
+            myPeerId = id;
+            document.getElementById('my-peer-id-text').innerText = id;
         });
 
-        // HOST RECEIVES CONNECTION
+        peer.on('error', (err) => {
+            console.error("PeerJS Error:", err);
+            document.getElementById('my-peer-id-text').innerText = "Connection Error";
+        });
+
         peer.on('connection', (c) => {
             connections.push(c);
-            
             c.on('open', () => {
                 logChat("SYSTEM", "New engineer connected.");
-                // Send full game state to new player
                 c.send({ type: 'sync', state: gameState });
-                updateUI(); // Update player count
+                updateUI();
             });
-
             c.on('data', (data) => handleData(data, c));
-            
             c.on('close', () => {
                 connections = connections.filter(conn => conn !== c);
                 logChat("SYSTEM", "Engineer disconnected.");
@@ -325,8 +342,8 @@
             document.getElementById('status-indicator').className = "mode-host";
             initUI();
             updateUI();
-            logChat("SYSTEM", "Lobby Created. Share your ID to play together.");
-        }, 1000);
+            logChat("SYSTEM", "Lobby Created. Share your ID above to play together.");
+        }, 500);
     }
 
     function joinGame() {
@@ -349,49 +366,37 @@
             });
 
             hostConn.on('data', (data) => handleData(data, null));
-            
             hostConn.on('close', () => {
                 alert("Connection to Host lost.");
                 location.reload();
             });
-        }, 1000);
+        }, 500);
     }
 
     function handleData(data, sender) {
         if (isHost) {
-            // HOST LOGIC
             if (data.type === 'click') {
                 performClick(data.amount);
-                // We don't rebroadcast state on every click to save bandwidth, 
-                // clients rely on periodic sync or their own optimistic updates.
-                // But for simple co-op, let's broadcast occasionally or on big events.
-            } 
-            else if (data.type === 'buy') {
-                // Validate purchase server-side (host-side)
+            } else if (data.type === 'buy') {
                 const b = gameState.buildings[data.id];
                 if (gameState.energy >= b.cost) {
-                    buyBuilding(data.id); // Execute logic
+                    buyBuilding(data.id);
                 } else {
-                    // Reject? For now, just resync
                     sender.send({ type: 'sync', state: gameState });
                 }
-            }
-            else if (data.type === 'rebirth') {
+            } else if (data.type === 'rebirth') {
                  if (calculatePotentialDM() >= data.gain) {
                      doRebirthLogic(data.gain);
                  }
-            }
-            else if (data.type === 'chat') {
+            } else if (data.type === 'chat') {
                 broadcastToAll(data);
                 logChat(data.user, data.msg);
             }
         } else {
-            // CLIENT LOGIC
             if (data.type === 'sync') {
                 gameState = data.state;
                 updateUI();
-            }
-            else if (data.type === 'chat') {
+            } else if (data.type === 'chat') {
                 logChat(data.user, data.msg);
             }
         }
@@ -408,30 +413,39 @@
         connections.forEach(c => c.send(packet));
     }
 
-    // Periodic Sync from Host to Clients to fix desync
     setInterval(() => {
         if(isHost && connections.length > 0) {
             broadcastState();
         }
-    }, 1000); // Sync every second
+    }, 1000);
 
-    // Passive Income Loop
     setInterval(() => {
         const eps = getEPS();
         if(eps > 0) {
-            // Add passive income
             gameState.energy += eps / 10;
             gameState.totalEnergyRun += eps / 10;
             updateUI();
-            
-            if(isHost) {
-                // Don't broadcast every tick, let the 1s interval handle it
-                if(Math.random() > 0.9) saveGame(); // Randomly save
-            }
+            if(isHost && Math.random() > 0.9) saveGame();
         }
     }, 100);
 
-    // --- CHAT UTILS ---
+    // --- CHAT & UTILS ---
+    
+    function copyId() {
+        if(myPeerId && myPeerId !== "Generating..." && myPeerId !== "Connection Error") {
+            navigator.clipboard.writeText(myPeerId).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.innerText;
+                btn.innerText = "Copied!";
+                btn.style.background = "#4caf50";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.background = "#333";
+                }, 1500);
+            });
+        }
+    }
+
     function sendChat() {
         const input = document.getElementById('chat-input');
         const msg = input.value;
@@ -444,11 +458,8 @@
             broadcastToAll(packet);
         } else if (hostConn) {
             hostConn.send(packet);
-            // Client doesn't show their own msg until host echoes it? 
-            // Let's show it locally for responsiveness
             logChat(myUsername, msg + " (you)"); 
         }
-        
         input.value = '';
     }
 
@@ -470,9 +481,9 @@
         box.scrollTop = box.scrollHeight;
     }
 
-    // Init basic UI
     initUI();
     updateUI();
+    initPeer(); // Start peer immediately so ID generates on load
 
 </script>
 </body>
