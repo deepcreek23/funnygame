@@ -3,198 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Clicker: Net Edition</title>
-    <!-- PeerJS for Serverless Multiplayer -->
+    <title>Cosmic Clicker: Co-op Edition</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #1a1a2e; --panel: #16213e; --accent: #0f3460; --text: #e94560; }
-        body { font-family: 'Courier New', monospace; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; gap: 20px; height: 100vh; box-sizing: border-box; }
+        :root { --bg: #1a1a2e; --panel: #16213e; --accent: #0f3460; --text: #e94560; --green: #4caf50; }
+        body { font-family: 'Courier New', monospace; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; gap: 20px; height: 100vh; box-sizing: border-box; overflow: hidden; }
         
-        /* Layout */
-        .col { flex: 1; background: var(--panel); padding: 20px; border-radius: 10px; overflow-y: auto; border: 1px solid var(--accent); }
+        .col { flex: 1; background: var(--panel); padding: 20px; border-radius: 10px; overflow-y: auto; border: 1px solid var(--accent); display: flex; flex-direction: column; }
         h1, h2 { color: var(--text); text-align: center; margin-top: 0; }
         
-        /* Buttons & Inputs */
         button { background: var(--accent); color: white; border: none; padding: 10px; width: 100%; margin-bottom: 5px; cursor: pointer; transition: 0.2s; font-weight: bold; }
         button:hover { background: var(--text); }
-        button:disabled { background: gray; cursor: not-allowed; }
+        button:disabled { background: gray; cursor: not-allowed; opacity: 0.6; }
         input { width: 90%; padding: 8px; margin-bottom: 10px; background: #000; color: white; border: 1px solid var(--text); }
 
-        /* Game Elements */
-        .resource-display { font-size: 2em; text-align: center; margin: 20px 0; }
+        .resource-display { font-size: 2em; text-align: center; margin: 20px 0; text-shadow: 0 0 10px var(--text); }
         .sub-resource { text-align: center; color: #aaa; font-size: 0.9em; }
-        .upgrade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; margin-bottom: 5px; border-radius: 5px; }
-        .chat-box { height: 200px; overflow-y: scroll; background: black; border: 1px solid #333; padding: 10px; margin-bottom: 10px; font-size: 0.8em; }
-        .msg { margin-bottom: 4px; }
-        .sys-msg { color: yellow; font-style: italic; }
         
-        /* Rebirth Modal */
-        #rebirth-section { border-top: 2px solid var(--text); padding-top: 20px; margin-top: 20px; text-align: center; }
-        .hidden { display: none; }
+        .upgrade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+        
+        /* Chat & Players */
+        .chat-box { flex-grow: 1; overflow-y: scroll; background: black; border: 1px solid #333; padding: 10px; margin-bottom: 10px; font-size: 0.8em; min-height: 150px; }
+        .msg { margin-bottom: 4px; word-wrap: break-word; }
+        .sys-msg { color: yellow; font-style: italic; }
+        .click-msg { color: var(--green); }
+        
+        #status-indicator { text-align: center; padding: 5px; background: #333; margin-bottom: 10px; border-radius: 4px; font-size: 0.8em;}
+        .mode-host { color: #4caf50; border: 1px solid #4caf50; }
+        .mode-client { color: #2196f3; border: 1px solid #2196f3; }
+
+        /* Hidden States */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- LEFT COLUMN: GAMEPLAY -->
+    <!-- LEFT COLUMN: SHARED GAMEPLAY -->
     <div class="col">
-        <h1>COSMIC CLICKER</h1>
+        <h1>COSMIC CO-OP</h1>
+        <div id="status-indicator">DISCONNECTED - LOCAL MODE</div>
+
         <div class="resource-display">
             <span id="energy">0</span> Energy
             <div class="sub-resource"><span id="eps">0</span> / sec</div>
         </div>
         
-        <button onclick="clickEnergy()" style="height: 80px; font-size: 1.2em;">GENERATE ENERGY</button>
+        <button id="btn-click" onclick="sendClick()" style="height: 80px; font-size: 1.2em;">GENERATE ENERGY</button>
 
-        <div id="rebirth-section">
+        <div id="rebirth-section" style="margin-top: auto; border-top: 2px solid var(--text); padding-top: 20px; text-align: center;">
             <h2>DIMENSIONAL REBIRTH</h2>
-            <p>Reset run for Dark Matter (Multiplies production)</p>
+            <p>Reset run for Dark Matter (Global Multiplier)</p>
             <p>Current Dark Matter: <span id="dm" style="color:#d4af37">0</span> (Multiplier: x<span id="mult">1</span>)</p>
             <p>Potential Gain: <span id="potential-dm">0</span></p>
-            <button onclick="doRebirth()" style="background: #d4af37; color: black;">REBIRTH NOW</button>
+            <button id="btn-rebirth" onclick="requestRebirth()">REBIRTH NOW</button>
         </div>
     </div>
 
-    <!-- MIDDLE COLUMN: UPGRADES -->
+    <!-- MIDDLE COLUMN: SHARED UPGRADES -->
     <div class="col">
-        <h2>UPGRADES</h2>
+        <h2>SHARED UPGRADES</h2>
         <div id="upgrades-list">
             <!-- Populated by JS -->
         </div>
     </div>
 
-    <!-- RIGHT COLUMN: MULTIPLAYER -->
+    <!-- RIGHT COLUMN: LOBBY & CHAT -->
     <div class="col">
-        <h2>NET LINK (Multiplayer)</h2>
+        <h2>NET LINK</h2>
+        
+        <!-- LOGIN SCREEN -->
         <div id="connection-panel">
-            <input type="text" id="username" placeholder="Enter Username" value="Player1">
-            <hr>
-            <button onclick="hostGame()">HOST NEW GAME</button>
-            <p style="text-align:center; font-size:0.8em;">- OR -</p>
-            <input type="text" id="host-id-input" placeholder="Enter Host ID">
-            <button onclick="joinGame()">JOIN GAME</button>
-            <p id="my-peer-id" style="word-break: break-all; font-size: 0.8em; color: #888; text-align: center;"></p>
+            <input type="text" id="username" placeholder="Enter Username" value="Engineer">
+            <hr style="border-color: #333">
+            <button onclick="hostGame()">HOST CO-OP LOBBY</button>
+            <p style="text-align:center; font-size:0.8em;">- OR JOIN EXISTING -</p>
+            <input type="text" id="host-id-input" placeholder="Paste Host ID Here">
+            <button onclick="joinGame()">JOIN LOBBY</button>
+            
+            <div id="my-id-display" style="margin-top:20px; text-align:center; font-size:0.8em; color:#888; word-break:break-all;"></div>
         </div>
 
-        <div id="game-ui" class="hidden">
+        <!-- IN GAME UI -->
+        <div id="game-ui" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
             <div class="chat-box" id="chat-box"></div>
             <div style="display:flex; gap:5px;">
-                <input type="text" id="chat-input" placeholder="Say something..." style="margin:0;">
-                <button onclick="sendChat()" style="width: 60px; margin:0;">Send</button>
+                <input type="text" id="chat-input" placeholder="Type message..." style="margin:0;" onkeypress="handleChatKey(event)">
+                <button onclick="sendChat()" style="width: 70px; margin:0;">Send</button>
             </div>
-            <h3>Connected Players</h3>
-            <ul id="player-list"></ul>
+            <div style="margin-top: 10px; font-size: 0.8em; color: #aaa;">
+                Active Engineers: <span id="player-count">1</span>
+            </div>
         </div>
     </div>
 
 <script>
-    // --- GAME STATE ---
-    let game = {
+    // --- GAME CONFIGURATION ---
+    const BUILDING_DATA = [
+        { id: 0, name: "Auto-Clicker", baseCost: 15, rate: 0.5 },
+        { id: 1, name: "Solar Panel", baseCost: 100, rate: 5 },
+        { id: 2, name: "Fusion Cell", baseCost: 1100, rate: 32 },
+        { id: 3, name: "Dyson Sphere", baseCost: 12000, rate: 150 },
+        { id: 4, name: "Quantum Rig", baseCost: 130000, rate: 800 }
+    ];
+
+    // --- STATE MANAGEMENT ---
+    let myUsername = "Anon";
+    let isHost = false;
+    let peer = null;
+    let connections = []; // Host stores clients here
+    let hostConn = null;  // Client stores host connection here
+    
+    // The "Master" Game State
+    let gameState = {
         energy: 0,
-        totalEnergy: 0, // Lifetime energy for this run
+        totalEnergyRun: 0,
         darkMatter: 0,
-        startTime: Date.now(),
-        buildings: [
-            { id: 0, name: "Auto-Clicker", cost: 15, rate: 0.5, count: 0 },
-            { id: 1, name: "Solar Panel", cost: 100, rate: 5, count: 0 },
-            { id: 2, name: "Fusion Cell", cost: 1100, rate: 32, count: 0 },
-            { id: 3, name: "Dyson Sphere", cost: 12000, rate: 150, count: 0 }
-        ]
+        buildings: [] // Will be populated from BUILDING_DATA
     };
 
-    // Load Save
-    if(localStorage.getItem('cosmicSave')) {
-        const saved = JSON.parse(localStorage.getItem('cosmicSave'));
-        game.energy = saved.energy;
-        game.darkMatter = saved.darkMatter;
-        game.totalEnergy = saved.totalEnergy || 0;
-        // Merge building counts carefully
-        saved.buildings.forEach((b, i) => {
-            if(game.buildings[i]) game.buildings[i].count = b.count;
-        });
+    // Initialize Buildings in State
+    function resetGameState() {
+        gameState.buildings = BUILDING_DATA.map(b => ({ ...b, count: 0, cost: b.baseCost }));
+        gameState.energy = 0;
+        gameState.totalEnergyRun = 0;
+        gameState.darkMatter = 0;
+    }
+
+    // Load Local Save (Only for Host initially)
+    if(localStorage.getItem('cosmicCoopSave')) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('cosmicCoopSave'));
+            gameState.energy = saved.energy || 0;
+            gameState.darkMatter = saved.darkMatter || 0;
+            gameState.totalEnergyRun = saved.totalEnergyRun || 0;
+            // Reconstruct buildings carefully
+            gameState.buildings = BUILDING_DATA.map((b, index) => {
+                const savedB = saved.buildings ? saved.buildings[index] : null;
+                return { 
+                    ...b, 
+                    count: savedB ? savedB.count : 0,
+                    cost: savedB ? savedB.cost : b.baseCost
+                };
+            });
+        } catch(e) { resetGameState(); }
+    } else {
+        resetGameState();
     }
 
     // --- CORE LOGIC ---
-    
+
     function getMultiplier() {
-        return 1 + (game.darkMatter * 0.5); // Each DM adds 50% boost
+        return 1 + (gameState.darkMatter * 0.5);
     }
 
     function getEPS() {
-        let rawRate = game.buildings.reduce((acc, b) => acc + (b.count * b.rate), 0);
+        let rawRate = gameState.buildings.reduce((acc, b) => acc + (b.count * b.rate), 0);
         return rawRate * getMultiplier();
     }
 
-    function clickEnergy() {
-        const clickVal = 1 * getMultiplier();
-        addEnergy(clickVal);
-    }
-
-    function addEnergy(amount) {
-        game.energy += amount;
-        game.totalEnergy += amount;
+    // Called when ANYONE clicks
+    function performClick(amount) {
+        const val = amount * getMultiplier();
+        gameState.energy += val;
+        gameState.totalEnergyRun += val;
         updateUI();
     }
 
+    // Local user clicks button
+    function sendClick() {
+        const clickPower = 1; 
+        
+        // Visual feedback immediately
+        const btn = document.getElementById('btn-click');
+        btn.style.transform = "scale(0.95)";
+        setTimeout(() => btn.style.transform = "scale(1)", 50);
+
+        if (isHost) {
+            performClick(clickPower);
+            broadcastState(); // Send updated numbers to clients
+        } else if (hostConn) {
+            // Tell host I clicked
+            hostConn.send({ type: 'click', amount: clickPower, user: myUsername });
+            // Optimistic UI update (optional, but feels better)
+            // performClick(clickPower); 
+        }
+    }
+
     function buyBuilding(id) {
-        const b = game.buildings[id];
-        if (game.energy >= b.cost) {
-            game.energy -= b.cost;
+        const b = gameState.buildings[id];
+        if (gameState.energy >= b.cost) {
+            gameState.energy -= b.cost;
             b.count++;
-            b.cost = Math.ceil(b.cost * 1.15); // Price scaling
+            b.cost = Math.ceil(b.baseCost * Math.pow(1.15, b.count));
+            
             updateUI();
-            broadcastState(); // Tell multiplayer peers
+            
+            if(isHost) {
+                broadcastState();
+                saveGame();
+                logChat("SYSTEM", `${myUsername} upgraded ${b.name}`);
+            } else {
+                hostConn.send({ type: 'buy', id: id, user: myUsername });
+            }
         }
     }
 
     function calculatePotentialDM() {
-        // Formula: Cube root of (Total Energy / 1000)
-        if (game.totalEnergy < 1000) return 0;
-        return Math.floor(Math.cbrt(game.totalEnergy / 1000));
+        if (gameState.totalEnergyRun < 1000) return 0;
+        return Math.floor(Math.cbrt(gameState.totalEnergyRun / 1000));
     }
 
-    function doRebirth() {
+    function requestRebirth() {
         const gain = calculatePotentialDM();
-        if (gain <= 0) return alert("Not enough energy to rebirth!");
+        if (gain <= 0) return alert("Not enough energy!");
         
-        if(!confirm(`Reset now? You will gain ${gain} Dark Matter.`)) return;
+        if(!confirm(`Rebirth? Gain ${gain} DM. Resets buildings/energy.`)) return;
 
-        game.darkMatter += gain;
-        game.energy = 0;
-        game.totalEnergy = 0;
-        game.buildings.forEach(b => {
+        if (isHost) {
+            doRebirthLogic(gain);
+        } else {
+            hostConn.send({ type: 'rebirth', gain: gain, user: myUsername });
+        }
+    }
+
+    // Only Host runs this
+    function doRebirthLogic(gain) {
+        gameState.darkMatter += gain;
+        gameState.energy = 0;
+        gameState.totalEnergyRun = 0;
+        gameState.buildings.forEach(b => {
             b.count = 0;
-            // Reset costs roughly (optional, keeping simple here)
-            if(b.id === 0) b.cost = 15;
-            else b.cost = Math.ceil(b.cost / Math.pow(1.15, b.count)); // Rough reset logic
+            b.cost = b.baseCost;
         });
-        
-        // Actually, simpler cost reset:
-        game.buildings[0].cost = 15;
-        game.buildings[1].cost = 100;
-        game.buildings[2].cost = 1100;
-        game.buildings[3].cost = 12000;
-
         saveGame();
         updateUI();
         broadcastState();
-        logChat("SYSTEM", `Reborn! Gained ${gain} Dark Matter.`);
+        logChat("SYSTEM", `UNIVERSE REBORN! Multiplier increased.`);
+    }
+
+    function saveGame() {
+        localStorage.setItem('cosmicCoopSave', JSON.stringify(gameState));
     }
 
     // --- UI UPDATES ---
-    
+
     function initUI() {
         const list = document.getElementById('upgrades-list');
         list.innerHTML = '';
-        game.buildings.forEach(b => {
+        gameState.buildings.forEach(b => {
             const div = document.createElement('div');
             div.className = 'upgrade-item';
             div.innerHTML = `
                 <div>
-                    <strong>${b.name}</strong><br>
-                    <small>Rate: ${b.rate}/s | Owned: <span id="count-${b.id}">${b.count}</span></small>
+                    <strong>${b.name}</strong> <span style="color:#aaa; font-size:0.8em">(+${b.rate}/s)</span><br>
+                    <small>Lvl: <span id="count-${b.id}">0</span></small>
                 </div>
-                <button onclick="buyBuilding(${b.id})" id="btn-buy-${b.id}">
-                    Buy (${b.cost})
+                <button onclick="buyBuilding(${b.id})" id="btn-buy-${b.id}" style="width: 120px;">
+                    ${b.cost}
                 </button>
             `;
             list.appendChild(div);
@@ -202,215 +267,212 @@
     }
 
     function updateUI() {
-        document.getElementById('energy').innerText = Math.floor(game.energy).toLocaleString();
+        document.getElementById('energy').innerText = Math.floor(gameState.energy).toLocaleString();
         document.getElementById('eps').innerText = getEPS().toFixed(1);
-        document.getElementById('dm').innerText = game.darkMatter;
+        document.getElementById('dm').innerText = gameState.darkMatter;
         document.getElementById('mult').innerText = getMultiplier().toFixed(1);
-        
-        const potential = calculatePotentialDM();
-        document.getElementById('potential-dm').innerText = potential;
+        document.getElementById('potential-dm').innerText = calculatePotentialDM();
+        document.getElementById('player-count').innerText = isHost ? connections.length + 1 : 1;
 
-        game.buildings.forEach(b => {
+        gameState.buildings.forEach(b => {
             document.getElementById(`count-${b.id}`).innerText = b.count;
             const btn = document.getElementById(`btn-buy-${b.id}`);
-            btn.innerText = `Buy (${b.cost.toLocaleString()})`;
-            btn.disabled = game.energy < b.cost;
+            btn.innerText = `${b.cost.toLocaleString()}`;
+            btn.disabled = gameState.energy < b.cost;
         });
     }
 
-    function saveGame() {
-        localStorage.setItem('cosmicSave', JSON.stringify(game));
-    }
-
-    setInterval(() => {
-        const eps = getEPS();
-        if(eps > 0) {
-            addEnergy(eps / 10); // Run 10 times a second for smoothness
-        }
-        saveGame();
-    }, 100);
-
-    initUI();
-    updateUI();
-
-    // --- MULTIPLAYER (PEERJS) ---
-    
-    let peer = null;
-    let conn = null; // For client
-    let connections = []; // For host
-    let myId = null;
-    let username = "Anon";
+    // --- MULTIPLAYER LOGIC (PEERJS) ---
 
     function initPeer() {
-        username = document.getElementById('username').value || "Player";
-        // Create a random ID for the peer
-        peer = new Peer(null, {
-            debug: 2
-        });
+        myUsername = document.getElementById('username').value || "Engineer";
+        peer = new Peer(null, { debug: 2 });
 
         peer.on('open', (id) => {
-            myId = id;
-            document.getElementById('my-peer-id').innerText = "Your ID: " + id;
+            document.getElementById('my-id-display').innerText = "Your ID: " + id;
         });
 
-        // If someone connects to us (We are Host)
+        // HOST RECEIVES CONNECTION
         peer.on('connection', (c) => {
-            setupConnection(c);
-        });
-    }
-
-    function setupConnection(c) {
-        c.on('open', () => {
-            if(peer && connections.length === 0 && c.peer !== peer.id) { 
-                // Logic check to ensure we treat incoming as client
-            }
+            connections.push(c);
             
-            // Add to list
-            const isHost = connections.length === 0 && c.peer !== myId; 
-            
-            // Send handshake
-            c.send({
-                type: 'handshake',
-                user: username,
-                state: game
+            c.on('open', () => {
+                logChat("SYSTEM", "New engineer connected.");
+                // Send full game state to new player
+                c.send({ type: 'sync', state: gameState });
+                updateUI(); // Update player count
             });
 
             c.on('data', (data) => handleData(data, c));
             
-            // Keep track
-            if (!connections.includes(c)) connections.push(c);
-            updatePlayerList();
-            logChat("SYSTEM", `${data.user || 'Someone'} connected.`);
-        });
-        
-        c.on('close', () => {
-             logChat("SYSTEM", "A player disconnected.");
-             connections = connections.filter(con => con !== c);
-             updatePlayerList();
+            c.on('close', () => {
+                connections = connections.filter(conn => conn !== c);
+                logChat("SYSTEM", "Engineer disconnected.");
+                updateUI();
+            });
         });
     }
 
     function hostGame() {
-        username = document.getElementById('username').value;
-        if(!peer) initPeer();
+        myUsername = document.getElementById('username').value;
+        isHost = true;
+        initPeer();
         
         setTimeout(() => {
-            alert("Hosting... Share your ID below with friends:\n" + myId);
             document.getElementById('connection-panel').classList.add('hidden');
             document.getElementById('game-ui').classList.remove('hidden');
-            logChat("SYSTEM", "You are the HOST. Waiting for players...");
+            document.getElementById('status-indicator').innerText = "HOSTING LOBBY - WAITING FOR PLAYERS";
+            document.getElementById('status-indicator').className = "mode-host";
+            initUI();
+            updateUI();
+            logChat("SYSTEM", "Lobby Created. Share your ID to play together.");
         }, 1000);
     }
 
     function joinGame() {
-        username = document.getElementById('username').value;
+        myUsername = document.getElementById('username').value;
         const hostId = document.getElementById('host-id-input').value;
         if(!hostId) return alert("Enter Host ID");
-        
-        if(!peer) initPeer();
+
+        initPeer();
 
         setTimeout(() => {
-            conn = peer.connect(hostId);
-            conn.on('open', () => {
+            hostConn = peer.connect(hostId);
+            
+            hostConn.on('open', () => {
                 document.getElementById('connection-panel').classList.add('hidden');
                 document.getElementById('game-ui').classList.remove('hidden');
-                
-                // Send our info
-                conn.send({
-                    type: 'handshake',
-                    user: username,
-                    state: game
-                });
-                logChat("SYSTEM", "Connected to Host!");
+                document.getElementById('status-indicator').innerText = "CONNECTED TO HOST";
+                document.getElementById('status-indicator').className = "mode-client";
+                initUI();
+                logChat("SYSTEM", "Connected! Syncing universe...");
             });
+
+            hostConn.on('data', (data) => handleData(data, null));
             
-            conn.on('data', (data) => handleData(data, null));
-            conn.on('close', () => {
-                alert("Lost connection to host");
+            hostConn.on('close', () => {
+                alert("Connection to Host lost.");
                 location.reload();
             });
         }, 1000);
     }
 
-    function handleData(data, senderConn) {
-        if (data.type === 'chat') {
-            logChat(data.user, data.msg);
-            // If I am host, relay to everyone else
-            if (connections.length > 0 && senderConn) {
-                connections.forEach(c => {
-                    if(c !== senderConn) c.send(data);
-                });
+    function handleData(data, sender) {
+        if (isHost) {
+            // HOST LOGIC
+            if (data.type === 'click') {
+                performClick(data.amount);
+                // We don't rebroadcast state on every click to save bandwidth, 
+                // clients rely on periodic sync or their own optimistic updates.
+                // But for simple co-op, let's broadcast occasionally or on big events.
+            } 
+            else if (data.type === 'buy') {
+                // Validate purchase server-side (host-side)
+                const b = gameState.buildings[data.id];
+                if (gameState.energy >= b.cost) {
+                    buyBuilding(data.id); // Execute logic
+                } else {
+                    // Reject? For now, just resync
+                    sender.send({ type: 'sync', state: gameState });
+                }
             }
-        }
-        else if (data.type === 'state-update') {
-            // Update other player's visual stats (simplified)
-            // In a full game, you'd sync specific player objects
-            console.log("Received state from", data.user);
-        }
-        else if (data.type === 'handshake') {
-            logChat("SYSTEM", `${data.user} joined the universe.`);
-            // If I am host, send them current chat history or welcome msg
-            if(connections.length > 0) {
-                 senderConn.send({type:'chat', user:'SYSTEM', msg:'Welcome to the lobby!'});
+            else if (data.type === 'rebirth') {
+                 if (calculatePotentialDM() >= data.gain) {
+                     doRebirthLogic(data.gain);
+                 }
+            }
+            else if (data.type === 'chat') {
+                broadcastToAll(data);
+                logChat(data.user, data.msg);
+            }
+        } else {
+            // CLIENT LOGIC
+            if (data.type === 'sync') {
+                gameState = data.state;
+                updateUI();
+            }
+            else if (data.type === 'chat') {
+                logChat(data.user, data.msg);
             }
         }
     }
 
     function broadcastState() {
-        const payload = {
-            type: 'state-update',
-            user: username,
-            state: { energy: game.energy, dm: game.darkMatter } // Only send essentials
-        };
-
-        if (conn) {
-            // I am client
-            conn.send(payload);
-        } else if (connections.length > 0) {
-            // I am host
-            connections.forEach(c => c.send(payload));
-        }
+        if (!isHost) return;
+        const payload = { type: 'sync', state: gameState };
+        connections.forEach(c => c.send(payload));
     }
 
+    function broadcastToAll(packet) {
+        if (!isHost) return;
+        connections.forEach(c => c.send(packet));
+    }
+
+    // Periodic Sync from Host to Clients to fix desync
+    setInterval(() => {
+        if(isHost && connections.length > 0) {
+            broadcastState();
+        }
+    }, 1000); // Sync every second
+
+    // Passive Income Loop
+    setInterval(() => {
+        const eps = getEPS();
+        if(eps > 0) {
+            // Add passive income
+            gameState.energy += eps / 10;
+            gameState.totalEnergyRun += eps / 10;
+            updateUI();
+            
+            if(isHost) {
+                // Don't broadcast every tick, let the 1s interval handle it
+                if(Math.random() > 0.9) saveGame(); // Randomly save
+            }
+        }
+    }, 100);
+
+    // --- CHAT UTILS ---
     function sendChat() {
         const input = document.getElementById('chat-input');
         const msg = input.value;
         if(!msg) return;
+
+        const packet = { type: 'chat', user: myUsername, msg: msg };
         
-        const packet = { type: 'chat', user: username, msg: msg };
-        
-        // Display locally
-        logChat(username, msg);
-        
-        // Send
-        if (conn) {
-            conn.send(packet);
-        } else if (connections.length > 0) {
-            connections.forEach(c => c.send(packet));
+        if (isHost) {
+            logChat(myUsername, msg);
+            broadcastToAll(packet);
+        } else if (hostConn) {
+            hostConn.send(packet);
+            // Client doesn't show their own msg until host echoes it? 
+            // Let's show it locally for responsiveness
+            logChat(myUsername, msg + " (you)"); 
         }
         
         input.value = '';
+    }
+
+    function handleChatKey(e) {
+        if(e.key === 'Enter') sendChat();
     }
 
     function logChat(user, msg) {
         const box = document.getElementById('chat-box');
         const div = document.createElement('div');
         div.className = 'msg';
-        if(user === 'SYSTEM') div.classList.add('sys-msg');
-        div.innerHTML = `<strong>${user}:</strong> ${msg}`;
+        if(user === 'SYSTEM') {
+            div.classList.add('sys-msg');
+            div.innerHTML = `[SYSTEM] ${msg}`;
+        } else {
+            div.innerHTML = `<strong>${user}:</strong> ${msg}`;
+        }
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     }
 
-    function updatePlayerList() {
-        const list = document.getElementById('player-list');
-        list.innerHTML = `<li>${username} (You)</li>`;
-        // In a real implementation, we'd track names of all connected peers
-        list.innerHTML += `<li>Remote Player(s) Connected</li>`;
-    }
-
-    // Initialize Peer immediately on load to be ready
-    initPeer();
+    // Init basic UI
+    initUI();
+    updateUI();
 
 </script>
 </body>
